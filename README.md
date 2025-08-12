@@ -3,9 +3,10 @@
 **Step 1: Create Next.js Project**
 
 npx create-next-app@latest my-app
+
 cd my-app
 
-Step 2: Install Required Dependencies
+**Step 2: Install Required Dependencies**
 # Core dependencies
 npm install drizzle-orm drizzle-kit pg
 npm install @apollo/server @apollo/client graphql graphql-tag
