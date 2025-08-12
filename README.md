@@ -1,6 +1,7 @@
-Next.js App Router + GraphQL + Drizzle + PostgreSQL Setup Guide
+**Next.js App Router + GraphQL + Drizzle + PostgreSQL Setup Guide**
 
-Step 1: Create Next.js Project  
+**Step 1: Create Next.js Project**
+
 npx create-next-app@latest my-app
 cd my-app
 
