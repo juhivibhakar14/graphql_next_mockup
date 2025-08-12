@@ -8,12 +8,12 @@ cd my-app
 
 
 **Step 2: Install Required Dependencies**
-# Core dependencies
+**#Core dependencies**
 npm install drizzle-orm drizzle-kit pg
 npm install @apollo/server @apollo/client graphql graphql-tag
 npm install @as-integrations/next
 
-# Development dependencies
+**#Development dependencies**
 npm install -D @types/pg
 
 
@@ -39,7 +39,7 @@ export default defineConfig({
   },
 });
 
-Step 5: Create Database Schema
+**Step 5: Create Database Schema**
 Create src/lib/db/schema.ts:
 import { pgTable, serial, text, timestamp, integer } from "drizzle-orm/pg-core";
 
@@ -64,7 +64,7 @@ export type NewUser = typeof users.$inferInsert; // Type for creating a new user
 export type Post = typeof posts.$inferSelect; // Type of a post row from the database
 export type NewPost = typeof posts.$inferInsert; // Type for creating a new post
 
-Step 6: Set up Database Connection
+**Step 6: Set up Database Connection**
 Create src/lib/db/index.ts:
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
@@ -76,14 +76,14 @@ const pool = new Pool({
 
 export const db = drizzle(pool, { schema });
 
-Step 7: Generate and Run Migrations
+**Step 7: Generate and Run Migrations**
 # Generate migration files
 npx drizzle-kit generate
 
 # Run migrations
 npx drizzle-kit migrate
 
-Step 8: Create GraphQL Schema
+**Step 8: Create GraphQL Schema**
 Create src/lib/graphql/typeDefs.ts:
 import { gql } from "graphql-tag";
 
@@ -120,7 +120,7 @@ export const typeDefs = gql`
   }
 `;
 
-Step 9: Create GraphQL Resolvers
+**Step 9: Create GraphQL Resolvers**
 Create src/lib/graphql/resolvers.ts:
 import { db } from "../db";
 import { users, posts } from "../db/schema";
@@ -216,7 +216,7 @@ export const resolvers = {
   },
 };
 
-Step 10: Create GraphQL API Route
+**Step 10: Create GraphQL API Route**
 Create src/app/api/graphql/route.ts:
 import { ApolloServer } from "@apollo/server";
 import { startServerAndCreateNextHandler } from "@as-integrations/next";
@@ -232,7 +232,7 @@ const handler = startServerAndCreateNextHandler(server);
 
 export { handler as GET, handler as POST };
 
-Step 11: Set up Apollo Client
+**Step 11: Set up Apollo Client**
 Create src/lib/apollo-client.ts:
 import { ApolloClient, InMemoryCache, createHttpLink } from "@apollo/client";
 
@@ -247,7 +247,7 @@ export const apolloClient = new ApolloClient({
   cache: new InMemoryCache(),
 });
 
-Step 12: Create Apollo Provider
+**Step 12: Create Apollo Provider**
 Create src/components/providers/ApolloProvider.tsx:
 "use client";
 
@@ -259,7 +259,7 @@ export function ApolloProviderWrapper({ children }: { children: ReactNode }) {
   return <ApolloProvider client={apolloClient}>{children}</ApolloProvider>;
 }
 
-Step 13: Update Root Layout
+**Step 13: Update Root Layout**
 Update src/app/layout.tsx:
 import { ApolloProviderWrapper } from "@/components/providers/ApolloProvider";
 import "./globals.css";
@@ -278,7 +278,7 @@ export default function RootLayout({
   );
 }
 
-Step 14: Create GraphQL Operations
+**Step 14: Create GraphQL Operations**
 Create src/lib/graphql/operations.ts:
 import { gql } from "@apollo/client";
 
@@ -337,7 +337,7 @@ export const GET_POSTS = gql`
   }
 `;
 
-Step 15: Create UserList Component
+**Step 15: Create UserList Component**
 Create src/components/UserList.tsx:
 "use client";
 
@@ -364,7 +364,7 @@ export function UserList() {
   );
 }
 
-Step 16: Update Homepage
+**Step 16: Update Homepage**
 Update src/app/page.tsx:
 import { UserList } from "@/components/UserList";
 
@@ -377,7 +377,7 @@ export default function Home() {
   );
 }
 
-Step 17: Package.json Scripts
+**Step 17: Package.json Scripts**
 {
   "scripts": {
     "db:generate": "drizzle-kit generate",
@@ -386,17 +386,17 @@ Step 17: Package.json Scripts
   }
 }
 
-Step 18: Run the Application
-# Start development server
+**Step 18: Run the Application**
+**#Start development server**
 npm run dev
 
-# In another terminal, you can explore your database
+**#In another terminal, you can explore your database**
 npm run db:studio
 
 Visit http://localhost:3000/api/graphql to access GraphQL Playground.
 Example GraphQL Queries
 
-# Get all users
+**#Get all users**
 query {
   users {
     id
@@ -409,7 +409,7 @@ query {
   }
 }
 
-# Create a user
+**#Create a user**
 mutation {
   createUser(name: "John Doe", email: "john@example.com") {
     id
