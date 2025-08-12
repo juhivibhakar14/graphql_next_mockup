@@ -6,6 +6,7 @@ npx create-next-app@latest my-app
 
 cd my-app
 
+
 **Step 2: Install Required Dependencies**
 # Core dependencies
 npm install drizzle-orm drizzle-kit pg
@@ -15,15 +16,17 @@ npm install @as-integrations/next
 # Development dependencies
 npm install -D @types/pg
 
-Step 3: Set up Environment Variables
+
+**Step 3: Set up Environment Variables**
 Create .env.local file:
-# Database
+
+**#database**
 DATABASE_URL="postgresql://username:password@localhost:5432/your_database_name"
 
-# GraphQL
+**#GraphQL**
 GRAPHQL_ENDPOINT="http://localhost:3000/api/graphql"
 
-Step 4: Configure Drizzle ORM
+**Step 4: Configure Drizzle ORM**
 Create drizzle.config.ts in the root:
 import { defineConfig } from "drizzle-kit";
 
