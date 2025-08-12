@@ -1,139 +1,414 @@
-<<<<<<< HEAD
+Next.js App Router + GraphQL + Drizzle + PostgreSQL Setup Guide
 
-=======
-# Turborepo starter
+Step 1: Create Next.js Project  
+npx create-next-app@latest my-app
+cd my-app
 
-This Turborepo starter is maintained by the Turborepo core team.
+Step 2: Install Required Dependencies
+# Core dependencies
+npm install drizzle-orm drizzle-kit pg
+npm install @apollo/server @apollo/client graphql graphql-tag
+npm install @as-integrations/next
 
-## Using this example
+# Development dependencies
+npm install -D @types/pg
 
-Run the following command:
+Step 3: Set up Environment Variables
+Create .env.local file:
+# Database
+DATABASE_URL="postgresql://username:password@localhost:5432/your_database_name"
 
-```sh
-npx create-turbo@latest
-```
+# GraphQL
+GRAPHQL_ENDPOINT="http://localhost:3000/api/graphql"
 
-## What's inside?
+Step 4: Configure Drizzle ORM
+Create drizzle.config.ts in the root:
+import { defineConfig } from "drizzle-kit";
 
-This Turborepo includes the following packages/apps:
+export default defineConfig({
+  schema: "./src/lib/db/schema.ts",
+  out: "./drizzle",
+  dialect: "postgresql",
+  dbCredentials: {
+    url: process.env.DATABASE_URL!,
+  },
+});
 
-### Apps and Packages
+Step 5: Create Database Schema
+Create src/lib/db/schema.ts:
+import { pgTable, serial, text, timestamp, integer } from "drizzle-orm/pg-core";
 
-- `docs`: a [Next.js](https://nextjs.org/) app
-- `web`: another [Next.js](https://nextjs.org/) app
-- `@repo/ui`: a stub React component library shared by both `web` and `docs` applications
-- `@repo/eslint-config`: `eslint` configurations (includes `eslint-config-next` and `eslint-config-prettier`)
-- `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
+export const users = pgTable("users", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  email: text("email").notNull().unique(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
 
-Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
+export const posts = pgTable("posts", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  content: text("content"),
+  authorId: integer("author_id").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+});
 
-### Utilities
+// Infer TypeScript types for selecting and inserting data using Drizzle ORM.
+export type User = typeof users.$inferSelect; // Type of a user row from the database
+export type NewUser = typeof users.$inferInsert; // Type for creating a new user
+export type Post = typeof posts.$inferSelect; // Type of a post row from the database
+export type NewPost = typeof posts.$inferInsert; // Type for creating a new post
 
-This Turborepo has some additional tools already setup for you:
+Step 6: Set up Database Connection
+Create src/lib/db/index.ts:
+import { drizzle } from "drizzle-orm/node-postgres";
+import { Pool } from "pg";
+import * as schema from "./schema";
 
-- [TypeScript](https://www.typescriptlang.org/) for static type checking
-- [ESLint](https://eslint.org/) for code linting
-- [Prettier](https://prettier.io) for code formatting
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+});
 
-### Build
+export const db = drizzle(pool, { schema });
 
-To build all apps and packages, run the following command:
+Step 7: Generate and Run Migrations
+# Generate migration files
+npx drizzle-kit generate
 
-```
-cd my-turborepo
+# Run migrations
+npx drizzle-kit migrate
 
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo build
+Step 8: Create GraphQL Schema
+Create src/lib/graphql/typeDefs.ts:
+import { gql } from "graphql-tag";
 
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo build
-yarn dlx turbo build
-pnpm exec turbo build
-```
+export const typeDefs = gql`
+  type User {
+    id: ID!
+    name: String!
+    email: String!
+    createdAt: String!
+    posts: [Post!]!
+  }
 
-You can build a specific package by using a [filter](https://turborepo.com/docs/crafting-your-repository/running-tasks#using-filters):
+  type Post {
+    id: ID!
+    title: String!
+    content: String
+    authorId: Int!
+    author: User!
+    createdAt: String!
+  }
 
-```
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo build --filter=docs
+  type Query {
+    users: [User!]!
+    user(id: ID!): User
+    posts: [Post!]!
+    post(id: ID!): Post
+  }
 
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo build --filter=docs
-yarn exec turbo build --filter=docs
-pnpm exec turbo build --filter=docs
-```
+  type Mutation {
+    createUser(name: String!, email: String!): User!
+    createPost(title: String!, content: String, authorId: Int!): Post!
+    updateUser(id: ID!, name: String, email: String): User!
+    deleteUser(id: ID!): Boolean!
+  }
+`;
 
-### Develop
+Step 9: Create GraphQL Resolvers
+Create src/lib/graphql/resolvers.ts:
+import { db } from "../db";
+import { users, posts } from "../db/schema";
+import { eq } from "drizzle-orm";
 
-To develop all apps and packages, run the following command:
+export const resolvers = {
+  Query: {
+    users: async () => {
+      return await db.select().from(users);
+    },
 
-```
-cd my-turborepo
+    user: async (_: any, { id }: { id: string }) => {
+      const result = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, parseInt(id)));
+      return result[0] || null;
+    },
 
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo dev
+    posts: async () => {
+      return await db.select().from(posts);
+    },
 
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo dev
-yarn exec turbo dev
-pnpm exec turbo dev
-```
+    post: async (_: any, { id }: { id: string }) => {
+      const result = await db
+        .select()
+        .from(posts)
+        .where(eq(posts.id, parseInt(id)));
+      return result[0] || null;
+    },
+  },
 
-You can develop a specific package by using a [filter](https://turborepo.com/docs/crafting-your-repository/running-tasks#using-filters):
+  Mutation: {
+    createUser: async (
+      _: any,
+      { name, email }: { name: string; email: string }
+    ) => {
+      const result = await db.insert(users).values({ name, email }).returning();
+      return result[0];
+    },
 
-```
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo dev --filter=web
+    createPost: async (
+      _: any,
+      {
+        title,
+        content,
+        authorId,
+      }: { title: string; content?: string; authorId: number }
+    ) => {
+      const result = await db
+        .insert(posts)
+        .values({ title, content, authorId })
+        .returning();
+      return result[0];
+    },
 
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo dev --filter=web
-yarn exec turbo dev --filter=web
-pnpm exec turbo dev --filter=web
-```
+    updateUser: async (
+      _: any,
+      { id, name, email }: { id: string; name?: string; email?: string }
+    ) => {
+      const updateData: any = {};
+      if (name) updateData.name = name;
+      if (email) updateData.email = email;
 
-### Remote Caching
+      const result = await db
+        .update(users)
+        .set(updateData)
+        .where(eq(users.id, parseInt(id)))
+        .returning();
+      return result[0];
+    },
 
-> [!TIP]
-> Vercel Remote Cache is free for all plans. Get started today at [vercel.com](https://vercel.com/signup?/signup?utm_source=remote-cache-sdk&utm_campaign=free_remote_cache).
+    deleteUser: async (_: any, { id }: { id: string }) => {
+      await db.delete(users).where(eq(users.id, parseInt(id)));
+      return true;
+    },
+  },
 
-Turborepo can use a technique known as [Remote Caching](https://turborepo.com/docs/core-concepts/remote-caching) to share cache artifacts across machines, enabling you to share build caches with your team and CI/CD pipelines.
+  User: {
+    posts: async (parent: any) => {
+      return await db.select().from(posts).where(eq(posts.authorId, parent.id));
+    },
+  },
 
-By default, Turborepo will cache locally. To enable Remote Caching you will need an account with Vercel. If you don't have an account you can [create one](https://vercel.com/signup?utm_source=turborepo-examples), then enter the following commands:
+  Post: {
+    author: async (parent: any) => {
+      const result = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, parent.authorId));
+      return result[0];
+    },
+  },
+};
 
-```
-cd my-turborepo
+Step 10: Create GraphQL API Route
+Create src/app/api/graphql/route.ts:
+import { ApolloServer } from "@apollo/server";
+import { startServerAndCreateNextHandler } from "@as-integrations/next";
+import { typeDefs } from "@/lib/graphql/typeDefs";
+import { resolvers } from "@/lib/graphql/resolvers";
 
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo login
+const server = new ApolloServer({
+  typeDefs,
+  resolvers,
+});
 
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo login
-yarn exec turbo login
-pnpm exec turbo login
-```
+const handler = startServerAndCreateNextHandler(server);
 
-This will authenticate the Turborepo CLI with your [Vercel account](https://vercel.com/docs/concepts/personal-accounts/overview).
+export { handler as GET, handler as POST };
 
-Next, you can link your Turborepo to your Remote Cache by running the following command from the root of your Turborepo:
+Step 11: Set up Apollo Client
+Create src/lib/apollo-client.ts:
+import { ApolloClient, InMemoryCache, createHttpLink } from "@apollo/client";
 
-```
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo link
+const httpLink = createHttpLink({
+  uri:
+    process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT ||
+    "http://localhost:3000/api/graphql",
+});
 
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo link
-yarn exec turbo link
-pnpm exec turbo link
-```
+export const apolloClient = new ApolloClient({
+  link: httpLink,
+  cache: new InMemoryCache(),
+});
 
-## Useful Links
+Step 12: Create Apollo Provider
+Create src/components/providers/ApolloProvider.tsx:
+"use client";
 
-Learn more about the power of Turborepo:
+import { ApolloProvider } from "@apollo/client";
+import { apolloClient } from "@/lib/apollo-client";
+import { ReactNode } from "react";
 
-- [Tasks](https://turborepo.com/docs/crafting-your-repository/running-tasks)
-- [Caching](https://turborepo.com/docs/crafting-your-repository/caching)
-- [Remote Caching](https://turborepo.com/docs/core-concepts/remote-caching)
-- [Filtering](https://turborepo.com/docs/crafting-your-repository/running-tasks#using-filters)
-- [Configuration Options](https://turborepo.com/docs/reference/configuration)
-- [CLI Usage](https://turborepo.com/docs/reference/command-line-reference)
->>>>>>> 8d8b5dd (feat(create-turbo): create basic)
+export function ApolloProviderWrapper({ children }: { children: ReactNode }) {
+  return <ApolloProvider client={apolloClient}>{children}</ApolloProvider>;
+}
+
+Step 13: Update Root Layout
+Update src/app/layout.tsx:
+import { ApolloProviderWrapper } from "@/components/providers/ApolloProvider";
+import "./globals.css";
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <html lang="en">
+      <body>
+        <ApolloProviderWrapper>{children}</ApolloProviderWrapper>
+      </body>
+    </html>
+  );
+}
+
+Step 14: Create GraphQL Operations
+Create src/lib/graphql/operations.ts:
+import { gql } from "@apollo/client";
+
+export const GET_USERS = gql`
+  query GetUsers {
+    users {
+      id
+      name
+      email
+      createdAt
+    }
+  }
+`;
+
+export const GET_USER = gql`
+  query GetUser($id: ID!) {
+    user(id: $id) {
+      id
+      name
+      email
+      createdAt
+      posts {
+        id
+        title
+        content
+        createdAt
+      }
+    }
+  }
+`;
+
+export const CREATE_USER = gql`
+  mutation CreateUser($name: String!, $email: String!) {
+    createUser(name: $name, email: $email) {
+      id
+      name
+      email
+      createdAt
+    }
+  }
+`;
+
+export const GET_POSTS = gql`
+  query GetPosts {
+    posts {
+      id
+      title
+      content
+      createdAt
+      author {
+        id
+        name
+        email
+      }
+    }
+  }
+`;
+
+Step 15: Create UserList Component
+Create src/components/UserList.tsx:
+"use client";
+
+import { useQuery } from "@apollo/client";
+import { GET_USERS } from "@/lib/graphql/operations";
+
+export function UserList() {
+  const { loading, error, data } = useQuery(GET_USERS);
+
+  if (loading) return <p>Loading...</p>;
+  if (error) return <p>Error: {error.message}</p>;
+
+  return (
+    <div>
+      <h2>Users</h2>
+      {data.users.map((user: any) => (
+        <div key={user.id} className="border p-4 mb-2">
+          <h3>{user.name}</h3>
+          <p>{user.email}</p>
+          <p>Created: {new Date(Number(user.createdAt)).toUTCString()}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+Step 16: Update Homepage
+Update src/app/page.tsx:
+import { UserList } from "@/components/UserList";
+
+export default function Home() {
+  return (
+    <main className="container mx-auto p-4">
+      <h1 className="text-3xl font-bold mb-8">GraphQL + Drizzle + Next.js</h1>
+      <UserList />
+    </main>
+  );
+}
+
+Step 17: Package.json Scripts
+{
+  "scripts": {
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:studio": "drizzle-kit studio"
+  }
+}
+
+Step 18: Run the Application
+# Start development server
+npm run dev
+
+# In another terminal, you can explore your database
+npm run db:studio
+
+Visit http://localhost:3000/api/graphql to access GraphQL Playground.
+Example GraphQL Queries
+
+# Get all users
+query {
+  users {
+    id
+    name
+    email
+    posts {
+      id
+      title
+    }
+  }
+}
+
+# Create a user
+mutation {
+  createUser(name: "John Doe", email: "john@example.com") {
+    id
+    name
+    email
+  }
+}
